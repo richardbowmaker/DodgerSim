@@ -52,34 +52,43 @@ mainGUI = do
             return ()
         
 generateMoves :: [[Dodger]] -> [[Dodger]]
-generateMoves _ = restOfMoves [[(Dodger "1" (Point 0 50) (Point 300 0) 10)]]        
+--generateMoves _ = restOfMoves [[(Dodger "1" (Point 0 50) (Point 5 0) 10)]] (mkStdGen 100)       
+generateMoves _ = restOfMoves [] (mkStdGen 100)       
 
-restOfMoves :: [[Dodger]] -> [[Dodger]]     
-restOfMoves xs = nextMoves ++ restOfMoves nextMoves
+restOfMoves :: [[Dodger]] -> StdGen -> [[Dodger]]
+restOfMoves [] gen = case new of 
+                        Nothing -> restOfMoves [] gen'
+                        Just d ->  [[d]] ++ restOfMoves [[d]] gen'
+        where  (gen', new) = genRandDodger gen
+        
+restOfMoves xs gen = case new of 
+                        Nothing -> [nextMoves] ++ restOfMoves [nextMoves] gen'
+                        Just d ->  [d:nextMoves] ++ restOfMoves [d:nextMoves] gen'
         where   currentMoves = last xs
-                nextMoves = [filter inDisplay (map dodgerMove currentMoves)]
+                nextMoves = filter inDisplay (map dodgerMove currentMoves)
                 dodgerMove :: Dodger -> Dodger    
                 dodgerMove (Dodger id (Point x y) speed@(Point vx vy) radius) =
                             (Dodger id (Point (x+vx) (y+vy)) speed radius)
                 inDisplay :: Dodger -> Bool
                 inDisplay (Dodger _ (Point x y) _ _) = (x < maxX) && (y < maxY)
+                (gen', new) = genRandDodger gen
                     
 genRandDodger :: StdGen -> (StdGen, Maybe Dodger)    
-genRandDodger gen = if new > 8
+genRandDodger gen = if new == 1
                     then
                         if isX
                         then
-                            (gen5, Just (Dodger "1" (Point 0 start) (Point speed 0) radius))
+                            (gen5, Just (Dodger "X" (Point 0 start) (Point speed 0) radius))
                         else
-                            (gen5, Just (Dodger "1" (Point start 0) (Point 0 speed) radius))
+                            (gen5, Just (Dodger "Y" (Point start 0) (Point 0 speed) radius))
                     else
                         (gen1, Nothing)
                     where
                         (new, gen1)     = randomR (1,10)   gen  :: (Int, StdGen)
                         (radius, gen2)  = randomR (10,20)  gen1 :: (Int, StdGen)
                         (isX, gen3)     = random           gen2 :: (Bool, StdGen)
-                        (start, gen4)   = randomR (0,maxX) gen3 :: (Int, StdGen)
-                        (speed, gen5)   = randomR (1,50)   gen4 :: (Int, StdGen)
+                        (start, gen4)   = randomR (1,maxX) gen3 :: (Int, StdGen)
+                        (speed, gen5)   = randomR (1,20)    gen4 :: (Int, StdGen)
                     
                     
                             
