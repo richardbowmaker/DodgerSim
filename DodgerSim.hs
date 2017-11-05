@@ -1,38 +1,66 @@
 module Main where
 import Graphics.UI.WX
 
-main = start myGUI
+-- size of display
+maxX, maxY :: Int
+maxY = 600
+maxX = 600
 
-myGUI :: IO ()
-myGUI = do 
-    f    <- frame    [text := "Frame"]
- --   set f [layout := margin 10 (column 5 [floatCentre (label "Hello")] )]
-{-
-    w   <- window f [text := "Window"]
-    d   <- dialog w [text := "Dialog"]
-    ok  <- button d [text := "Ok"]
-    result <- showModal d (\stop -> set ok [on command := stop (Just 42)])
--}  
-    myVar1 <- varCreate (1 :: Int)
-    myVar2 <- varCreate (2 :: Int)
+data Dodger = Dodger {  id          :: String,
+                        position    :: Point,
+                        speed       :: Point,
+                        radius      :: Int
+                     }
+
+
+main = start mainGUI
+
+mainGUI :: IO ()
+mainGUI = do 
+
+    dodgers <- varCreate []
+    generateDodgers dodgers
     
-    set f [text := "Panel", on paint := panelPaint myVar1 myVar2]
+    f <- frameFixed [] 
+    
+    set f [ text := "Dodger Sim", 
+            bgcolor := white, 
+            layout := space maxX maxY,
+            on paint := doPaint dodgers
+          ]
+      
+    -- create a timer that updates the display
+    t <- timer f [interval := 100, on command := updateDisplay dodgers f]
 
-    -- create a panel to draw in.
-    -- p <- panel f [text := "Panel", on paint := panelPaint]
    
     return ()
     
+    
     where
     
-        panelPaint :: Var Int -> Var Int -> DC a -> Rect -> IO ()
-        panelPaint vi1 vi2  dc viewArea
-          = do circle dc (point 100 100) 80 []
-               return ()
-          
-          
-    
-    
-                                     
-                                     
+        doPaint :: Var [Dodger] -> DC a -> Rect -> IO ()
+        doPaint ds dc _ = do
+            ( (Dodger id position speed radius):_ ) <- varGet ds
+            circle dc position radius []
+            return ()
+            
+        updateDisplay :: Var [Dodger] -> Frame () -> IO ()
+        updateDisplay ds f = do
+            varUpdate ds dodgerUpdate
+            repaint f
+            return ()
+        
+        generateDodgers :: Var [Dodger] -> IO ()
+        generateDodgers ds = do
+            varUpdate ds dodgerUpdate
+            return ()
+            
+        dodgerUpdate :: [Dodger] -> [Dodger]
+        dodgerUpdate [] = [(Dodger "1" (Point 100 200) (Point 30 40) 50)]
+        dodgerUpdate ( (Dodger id (Point x y) speed radius):_ ) =
+            [(Dodger id (Point (x+5) y) speed radius)]
+
+
+        
+        
        
