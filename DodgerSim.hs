@@ -72,7 +72,8 @@ restOfMoves xs gen = [moves] ++ restOfMoves [moves] gen'
                     
                     -- update all dodger postitions and discard any that have moved outside
                     -- the display area 
-                    updatedMoves = filter inDisplay (map dodgerMove currentMoves)
+                    -- updatedMoves = filter inDisplay (map dodgerMove currentMoves)
+                    updatedMoves = findValidMoves (allMoves currentMoves)
                  
                     -- update the position of the dodger
                     dodgerMove :: Dodger -> Dodger    
@@ -107,8 +108,42 @@ restOfMoves xs gen = [moves] ++ restOfMoves [moves] gen'
                                             (start, gen4)   = randomR (1,maxX) gen3 :: (Int, StdGen)
                                             (speed, gen5)   = randomR (1,20)   gen4 :: (Int, StdGen)
                     
-                                        
-                        
+                                                              
+-- takes the list of bubbles and returns a list of lists representing the candidate set
+-- of every combination of possible bubble moves. 
+-- One of those will be chosen to be the next set of actual moves, i.e. no two bubbles overlap
+-- i.e each bubble can move in each its preferred direction x or y, at right angles to that or not at all
+allMoves :: [Dodger] -> [[Dodger]]
+allMoves [] = [[]]
+allMoves (d@(Dodger id (Point x y) speed@(Point vx vy) radius):ds) 
+    = (:) <$> [ (Dodger id (Point (x+vx) (y+vy)) speed radius),
+                (Dodger id (Point (x+vy) (y+vx)) speed radius),
+                (Dodger id (Point (x-vy) (y-vx)) speed radius),
+                d]
+          <*> allMoves ds
+
+-- search the list of all possible bubble moves to find the first one where no two
+-- bubbles overlap         
+findValidMoves :: [[Dodger]] -> [Dodger]
+findValidMoves ds = case find noOverlaps ds of
+                        Just ds' -> ds'
+                        Nothing  -> last ds
+  
+-- checks that a list of bubbles has no overlaps  
+noOverlaps :: [Dodger] -> Bool
+noOverlaps ds = foldl (\result (d1,d2) -> result && not (overlaps d1 d2)) True (allPossiblePairs ds)
+   
+-- checks if two bubbles overlap   
+overlaps :: Dodger -> Dodger -> Bool
+overlaps (Dodger _ (Point x1 y1) _ r1) (Dodger _ (Point x2 y2) _ r2) = (x2+r2) < (x1-r1) || (x1+r1) < (x2-r2)
+
+-- takes a list of bubbles and returns all possible pairings, i.e. 2Cn, so that
+-- the list of bubbles can be checked for no overlaps between any of the bubbles
+allPossiblePairs :: [Dodger] -> [(Dodger,Dodger)]
+allPossiblePairs [] = []
+allPossiblePairs (x:xs) = [(x,b) | b <- xs] ++ (allPossiblePairs xs)
+
+
 
 
                      
