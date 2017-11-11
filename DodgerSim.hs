@@ -2,6 +2,7 @@ module Main where
 import Graphics.UI.WX
 import System.Random
 import Data.List
+import Debug.Trace
 
 -- size of display
 maxX, maxY :: Int
@@ -17,6 +18,7 @@ data Bubble = Bubble {  id          :: String,
 
 b1 = (Bubble "1" (Point 0 200) (Point 10 0) 10)                     
 b2 = (Bubble "2" (Point 200 0) (Point 0 10) 10)  
+b3 = (Bubble "3" (Point 300 0) (Point 0 10) 10)  
 bs = [b1,b2]                   
                      
 main = start mainGUI
@@ -24,23 +26,21 @@ main = start mainGUI
 mainGUI :: IO ()
 mainGUI = do 
 
-    dodgers <- varCreate []
-    varUpdate dodgers generateMoves 
+    bubbles <- varCreate []
+    varUpdate bubbles generateMoves 
     
     f <- frameFixed [] 
     
     set f [ text := "Bubble Sim", 
             bgcolor := white, 
             layout := space maxX maxY,
-            on paint := doPaint dodgers
+            on paint := doPaint bubbles
           ]
       
     -- create a timer that updates the display
-    t <- timer f [interval := 100, on command := updateDisplay dodgers f]
+    t <- timer f [interval := 100, on command := updateDisplay bubbles f]
 
-   
-    return ()
-    
+    return () 
     
     where
     
@@ -58,18 +58,15 @@ mainGUI = do
         
 generateMoves :: [[Bubble]] -> [[Bubble]]
 --generateMoves _ = restOfMoves [[(Bubble "1" (Point 0 50) (Point 5 0) 10)]] (mkStdGen 100)       
-generateMoves _ = restOfMoves [] (mkStdGen 200)
---generateMoves _ = restOfMoves [bs] (mkStdGen 100)      
-
--- generates an list of lists comprising all the dodgers and their moves as an infinite list.
--- the outer list is a time array, t0, t1, t2 etc with each element being a list of dodgers and there current position at
+generateMoves _ = restOfMoves [] 0 (mkStdGen 200)
+     
+-- generates an list of lists comprising all the bubbles and their moves as an infinite list.
+-- the outer list is a time array, t0, t1, t2 etc with each element being a list of bubbles and there current position at
 -- time tn. 
--- The dodgers are are added to the timeline randomly and will move either vertically or horizontally
+-- The bubbles are are added to the timeline randomly and will move either vertically or horizontally
 
-
-
-restOfMoves :: [[Bubble]] -> StdGen -> [[Bubble]]
-restOfMoves xs gen = [moves] ++ restOfMoves [moves] gen'
+restOfMoves :: [[Bubble]] -> Int -> StdGen -> [[Bubble]]
+restOfMoves xs nid gen = [moves] ++ (restOfMoves [moves] nid gen')
 
             where   currentMoves = case xs of
                         [] -> []
@@ -77,46 +74,40 @@ restOfMoves xs gen = [moves] ++ restOfMoves [moves] gen'
                     
                     -- update all bubble postitions and discard any that have moved outside
                     -- the display area 
-                    -- updatedMoves = filter inDisplay (map dodgerMove currentMoves)
-                    updatedMoves = findValidMoves (allMoves currentMoves)
-                 
-                    -- update the position of the bubble
-                    dodgerMove :: Bubble -> Bubble    
-                    dodgerMove (Bubble id (Point x y) speed@(Point vx vy) radius) =
-                                (Bubble id (Point (x+vx) (y+vy)) speed radius)
-                     
+                    updatedMoves = findValidMoves (allMoves currentMoves)              
+                    
                     -- is the bubble still in the display area
                     inDisplay :: Bubble -> Bool
                     inDisplay (Bubble _ (Point x y) _ _) = (x < maxX) && (y < maxY)
                     
-                    -- generate new bubble and insert into list of dodgers 
-                    (gen', md) = genRandDodger gen
+                    -- generate new bubble
+                    (gen', nid, mb) = genRandBubble gen nid
                     
-                    moves = case md of
+                    -- add to list of bubbles provided it does not overlap
+                    moves = case mb of
                         Nothing -> updatedMoves
-                        Just d  -> d:updatedMoves
-                    
-                    
-                    --moves = updatedMoves
-                    
-                    -- generate a random doger (10%) or nothing (90%)
-                    genRandDodger :: StdGen -> (StdGen, Maybe Bubble)    
-                    genRandDodger gen = if new == 1
-                                        then
-                                            if isX
-                                            then
-                                                (gen5, Just (Bubble "X" (Point 0 start) (Point speed 0) radius))
-                                            else
-                                                (gen5, Just (Bubble "Y" (Point start 0) (Point 0 speed) radius))
-                                        else
-                                            (gen1, Nothing)
-                                        where
-                                            (new, gen1)     = randomR (1,10)   gen  :: (Int, StdGen)
-                                            (radius, gen2)  = randomR (10,20)  gen1 :: (Int, StdGen)
-                                            (isX, gen3)     = random           gen2 :: (Bool, StdGen)
-                                            (start, gen4)   = randomR (1,maxX) gen3 :: (Int, StdGen)
-                                            (speed, gen5)   = randomR (1,20)   gen4 :: (Int, StdGen)
-                    
+                        Just b  -> case bubbleOverlaps b updatedMoves of
+                                True -> updatedMoves
+                                False -> b:updatedMoves
+                                                                      
+-- generate a random doger (10%) or nothing (90%)
+genRandBubble :: StdGen -> Int -> (StdGen, Int, Maybe Bubble)    
+genRandBubble gen nid = if new == 1
+                    then
+                        if isX
+                        then
+                            (gen5, (nid+1), Just (Bubble ("X") (Point 0 300) (Point speed 0) radius))
+                        else
+                            (gen5, (nid+1), Just (Bubble ("Y") (Point 300 0) (Point 0 speed) radius))
+                    else
+                        (gen1, nid, Nothing)
+                    where
+                        (new, gen1)     = randomR (1,10)   gen  :: (Int, StdGen)
+                        (radius, gen2)  = randomR (10,20)  gen1 :: (Int, StdGen)
+                        (isX, gen3)     = random           gen2 :: (Bool, StdGen)
+                        (start, gen4)   = randomR (1,maxX) gen3 :: (Int, StdGen)
+                        (speed, gen5)   = randomR (1,20)   gen4 :: (Int, StdGen)
+
                                                               
 -- takes the list of bubbles and returns a list of lists representing the candidate set
 -- of every combination of possible bubble moves. 
@@ -141,6 +132,10 @@ findValidMoves ds = case find noOverlaps ds of
 -- checks that a list of bubbles has no overlaps  
 noOverlaps :: [Bubble] -> Bool
 noOverlaps ds = foldl (\result (d1,d2) -> result && not (overlaps d1 d2)) True (allPossiblePairs ds)
+
+
+bubbleOverlaps :: Bubble -> [Bubble] -> Bool
+bubbleOverlaps b = foldl (\acc b' -> acc || (overlaps b b')) False
    
 -- checks if two bubbles overlap   
 overlaps :: Bubble -> Bubble -> Bool
@@ -154,6 +149,15 @@ allPossiblePairs [] = []
 allPossiblePairs (x:xs) = [(x,b) | b <- xs] ++ (allPossiblePairs xs)
 
 
+
+writeLogFile :: [Bubble] -> IO ()
+writeFile' = do
+    handle <- openFile "D:\\_Rick's\\haskell\\DodgerSim\\log.txt" AppendMode
+    hPutStr handle "line 1\n"
+    hPutStr handle "line 2\n"
+    hClose handle
+    return ()
+    
 
 
                      
