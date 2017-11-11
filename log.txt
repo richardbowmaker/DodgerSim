@@ -1,0 +1,33 @@
+-----------------------------------------------------------
+Bubble {id = "X", position = Point {pointX = 20, pointY = 300}, speed = Point {pointX = 10, pointY = 0}, radius = 11}
+Bubble {id = "X", position = Point {pointX = 40, pointY = 360}, speed = Point {pointX = 20, pointY = 0}, radius = 16}
+Bubble {id = "X", position = Point {pointX = 81, pointY = 327}, speed = Point {pointX = 9, pointY = 0}, radius = 10}
+Bubble {id = "Y", position = Point {pointX = 328, pointY = 392}, speed = Point {pointX = 0, pointY = 14}, radius = 13}
+Bubble {id = "X", position = Point {pointX = 58, pointY = 300}, speed = Point {pointX = 1, pointY = 0}, radius = 17}
+Bubble {id = "X", position = Point {pointX = 1470, pointY = 330}, speed = Point {pointX = 15, pointY = 0}, radius = 16}
+Bubble {id = "X", position = Point {pointX = 565, pointY = 300}, speed = Point {pointX = 5, pointY = 0}, radius = 12}
+Bubble {id = "Y", position = Point {pointX = 300, pointY = 342}, speed = Point {pointX = 0, pointY = 3}, radius = 13}
+Bubble {id = "X", position = Point {pointX = 720, pointY = 300}, speed = Point {pointX = 6, pointY = 0}, radius = 14}
+Bubble {id = "X", position = Point {pointX = 2268, pointY = 300}, speed = Point {pointX = 18, pointY = 0}, radius = 13}
+-----------------------------------------------------------
+Bubble {id = "X", position = Point {pointX = 30, pointY = 300}, speed = Point {pointX = 10, pointY = 0}, radius = 11}
+Bubble {id = "X", position = Point {pointX = 60, pointY = 360}, speed = Point {pointX = 20, pointY = 0}, radius = 16}
+Bubble {id = "X", position = Point {pointX = 90, pointY = 327}, speed = Point {pointX = 9, pointY = 0}, radius = 10}
+Bubble {id = "Y", position = Point {pointX = 328, pointY = 406}, speed = Point {pointX = 0, pointY = 14}, radius = 13}
+Bubble {id = "X", position = Point {pointX = 59, pointY = 300}, speed = Point {pointX = 1, pointY = 0}, radius = 17}
+Bubble {id = "X", position = Point {pointX = 1485, pointY = 330}, speed = Point {pointX = 15, pointY = 0}, radius = 16}
+Bubble {id = "X", position = Point {pointX = 570, pointY = 300}, speed = Point {pointX = 5, pointY = 0}, radius = 12}
+Bubble {id = "Y", position = Point {pointX = 300, pointY = 345}, speed = Point {pointX = 0, pointY = 3}, radius = 13}
+Bubble {id = "X", position = Point {pointX = 726, pointY = 300}, speed = Point {pointX = 6, pointY = 0}, radius = 14}
+Bubble {id = "X", position = Point {pointX = 2286, pointY = 300}, speed = Point {pointX = 18, pointY = 0}, radius = 13}
+-----------------------------------------------------------
+Bubble {id = "X", position = Point {pointX = 30, pointY = 310}, speed = Point {pointX = 10, pointY = 0}, radius = 11}
+Bubble {id = "X", position = Point {pointX = 80, pointY = 360}, speed = Point {pointX = 20, pointY = 0}, radius = 16}
+Bubble {id = "X", position = Point {pointX = 99, pointY = 327}, speed = Point {pointX = 9, pointY = 0}, radius = 10}
+Bubble {id = "Y", position = Point {pointX = 328, pointY = 420}, speed = Point {pointX = 0, pointY = 14}, radius = 13}
+Bubble {id = "X", position = Point {pointX = 60, pointY = 300}, speed = Point {pointX = 1, pointY = 0}, radius = 17}
+Bubble {id = "X", position = Point {pointX = 1500, pointY = 330}, speed = Point {pointX = 15, pointY = 0}, radius = 16}
+Bubble {id = "X", position = Point {pointX = 575, pointY = 300}, speed = Point {pointX = 5, pointY = 0}, radius = 12}
+Bubble {id = "Y", position = Point {pointX = 300, pointY = 348}, speed = Point {pointX = 0, pointY = 3}, radius = 13}
+Bubble {id = "X", position = Point {pointX = 732, pointY = 300}, speed = Point {pointX = 6, pointY = 0}, radius = 14}
+Bubble {id = "X", position = Point {pointX = 2304, pointY = 300}, speed = Point {pointX = 18, pointY = 0}, radius = 13}

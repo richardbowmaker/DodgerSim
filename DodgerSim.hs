@@ -3,6 +3,7 @@ import Graphics.UI.WX
 import System.Random
 import Data.List
 import Debug.Trace
+import System.IO
 
 -- size of display
 maxX, maxY :: Int
@@ -20,15 +21,29 @@ b1 = (Bubble "1" (Point 0 200) (Point 10 0) 10)
 b2 = (Bubble "2" (Point 200 0) (Point 0 10) 10)  
 b3 = (Bubble "3" (Point 300 0) (Point 0 10) 10)  
 bs = [b1,b2]                   
-                     
+     
+bs2 =  [(Bubble "X" (Point 20 300) (Point 10 0) 11),
+    (Bubble "X" (Point 40 360) (Point 20 0) 16),
+    (Bubble "X" (Point 81 327) (Point 9 0) 10),
+    (Bubble "Y" (Point 328 392) (Point 0 14) 13),
+    (Bubble "X" (Point 58 300) (Point 1 0) 17),
+    (Bubble "X" (Point 1470 330) (Point 15 0) 16),
+    (Bubble "X" (Point 565 300) (Point 5 0) 12),
+    (Bubble "Y" (Point 300 342) (Point 0 3) 13),
+    (Bubble "X" (Point 720 300) (Point 6 0) 14),
+    (Bubble "X" (Point 2268 300) (Point 18 0) 13)]
+
+
+
+   
 main = start mainGUI
 
 mainGUI :: IO ()
 mainGUI = do 
 
     bubbles <- varCreate []
-    varUpdate bubbles generateMoves 
-    
+    varUpdate bubbles generateMoves
+   
     f <- frameFixed [] 
     
     set f [ text := "Bubble Sim", 
@@ -40,6 +55,9 @@ mainGUI = do
     -- create a timer that updates the display
     t <- timer f [interval := 100, on command := updateDisplay bubbles f]
 
+ --   bs <- varGet bubbles
+ --   mapM_ writeLogFile (take 3 bs)
+ 
     return () 
     
     where
@@ -57,8 +75,8 @@ mainGUI = do
             return ()
         
 generateMoves :: [[Bubble]] -> [[Bubble]]
---generateMoves _ = restOfMoves [[(Bubble "1" (Point 0 50) (Point 5 0) 10)]] (mkStdGen 100)       
-generateMoves _ = restOfMoves [] 0 (mkStdGen 200)
+generateMoves _ = restOfMoves [] 0 (mkStdGen 500)
+--generateMoves _ = [bs2] ++ restOfMoves [bs2] 0 (mkStdGen 200)
      
 -- generates an list of lists comprising all the bubbles and their moves as an infinite list.
 -- the outer list is a time array, t0, t1, t2 etc with each element being a list of bubbles and there current position at
@@ -74,14 +92,14 @@ restOfMoves xs nid gen = [moves] ++ (restOfMoves [moves] nid gen')
                     
                     -- update all bubble postitions and discard any that have moved outside
                     -- the display area 
-                    updatedMoves = findValidMoves (allMoves currentMoves)              
+                    updatedMoves = filter inDisplay (findValidMoves (allMoves currentMoves))
                     
                     -- is the bubble still in the display area
                     inDisplay :: Bubble -> Bool
                     inDisplay (Bubble _ (Point x y) _ _) = (x < maxX) && (y < maxY)
                     
                     -- generate new bubble
-                    (gen', nid, mb) = genRandBubble gen nid
+                    (gen', nid, mb) = genRandBubble gen nid (length updatedMoves)
                     
                     -- add to list of bubbles provided it does not overlap
                     moves = case mb of
@@ -91,14 +109,14 @@ restOfMoves xs nid gen = [moves] ++ (restOfMoves [moves] nid gen')
                                 False -> b:updatedMoves
                                                                       
 -- generate a random doger (10%) or nothing (90%)
-genRandBubble :: StdGen -> Int -> (StdGen, Int, Maybe Bubble)    
-genRandBubble gen nid = if new == 1
+genRandBubble :: StdGen -> Int -> Int -> (StdGen, Int, Maybe Bubble)    
+genRandBubble gen nid size = if new == 1 && size < 10
                     then
                         if isX
                         then
-                            (gen5, (nid+1), Just (Bubble ("X") (Point 0 300) (Point speed 0) radius))
+                            (gen5, (nid+1), Just (Bubble ("X") (Point 0 start) (Point speed 0) radius))
                         else
-                            (gen5, (nid+1), Just (Bubble ("Y") (Point 300 0) (Point 0 speed) radius))
+                            (gen5, (nid+1), Just (Bubble ("Y") (Point start 0) (Point 0 speed) radius))
                     else
                         (gen1, nid, Nothing)
                     where
@@ -117,8 +135,8 @@ allMoves :: [Bubble] -> [[Bubble]]
 allMoves [] = [[]]
 allMoves (d@(Bubble id (Point x y) speed@(Point vx vy) radius):ds) 
     = (:) <$> [ (Bubble id (Point (x+vx) (y+vy)) speed radius),
-                (Bubble id (Point (x+vy) (y+vx)) speed radius),
-                (Bubble id (Point (x-vy) (y-vx)) speed radius),
+--                (Bubble id (Point (x+vy) (y+vx)) speed radius),
+--                (Bubble id (Point (x-vy) (y-vx)) speed radius),
                 d]
           <*> allMoves ds
 
@@ -151,10 +169,10 @@ allPossiblePairs (x:xs) = [(x,b) | b <- xs] ++ (allPossiblePairs xs)
 
 
 writeLogFile :: [Bubble] -> IO ()
-writeFile' = do
+writeLogFile bs = do
     handle <- openFile "D:\\_Rick's\\haskell\\DodgerSim\\log.txt" AppendMode
-    hPutStr handle "line 1\n"
-    hPutStr handle "line 2\n"
+    hPutStr handle "-----------------------------------------------------------\n"
+    mapM_ (\b ->  do hPutStr handle (show b ++ "\n")) bs
     hClose handle
     return ()
     
