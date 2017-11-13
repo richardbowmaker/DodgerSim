@@ -4,36 +4,18 @@ import System.Random
 import Data.List
 import Debug.Trace
 import System.IO
+import Data.Char
 
 -- size of display
 maxX, maxY :: Int
 maxY = 600
 maxX = 600
 
-data Bubble = Bubble {  id          :: String,
+data Bubble = Bubble {  bid         :: Int,
                         position    :: Point,
                         speed       :: Point,
                         radius      :: Int
-                     } deriving (Show,Eq)
-
-
-b1 = (Bubble "1" (Point 0 200) (Point 10 0) 10)                     
-b2 = (Bubble "2" (Point 200 0) (Point 0 10) 10)  
-b3 = (Bubble "3" (Point 300 0) (Point 0 10) 10)  
-bs = [b1,b2]                   
-     
-bs2 =  [(Bubble "X" (Point 20 300) (Point 10 0) 11),
-    (Bubble "X" (Point 40 360) (Point 20 0) 16),
-    (Bubble "X" (Point 81 327) (Point 9 0) 10),
-    (Bubble "Y" (Point 328 392) (Point 0 14) 13),
-    (Bubble "X" (Point 58 300) (Point 1 0) 17),
-    (Bubble "X" (Point 1470 330) (Point 15 0) 16),
-    (Bubble "X" (Point 565 300) (Point 5 0) 12),
-    (Bubble "Y" (Point 300 342) (Point 0 3) 13),
-    (Bubble "X" (Point 720 300) (Point 6 0) 14),
-    (Bubble "X" (Point 2268 300) (Point 18 0) 13)]
-
-
+                     } deriving (Eq)
 
    
 main = start mainGUI
@@ -55,8 +37,10 @@ mainGUI = do
     -- create a timer that updates the display
     t <- timer f [interval := 100, on command := updateDisplay bubbles f]
 
- --   bs <- varGet bubbles
- --   mapM_ writeLogFile (take 3 bs)
+    --bs <- varGet bubbles
+    -- mapM_ writeLogFile (take 10 bs)
+    
+    --putStr (bubblesListToString (take 10 bs))
  
     return () 
     
@@ -114,9 +98,9 @@ genRandBubble gen nid size = if new == 1 && size < 10
                     then
                         if isX
                         then
-                            (gen5, (nid+1), Just (Bubble ("X") (Point 0 start) (Point speed 0) radius))
+                            (gen5, (nid+1), Just (Bubble nid (Point 0 start) (Point speed 0) radius))
                         else
-                            (gen5, (nid+1), Just (Bubble ("Y") (Point start 0) (Point 0 speed) radius))
+                            (gen5, (nid+1), Just (Bubble nid (Point start 0) (Point 0 speed) radius))
                     else
                         (gen1, nid, Nothing)
                     where
@@ -167,7 +151,20 @@ allPossiblePairs [] = []
 allPossiblePairs (x:xs) = [(x,b) | b <- xs] ++ (allPossiblePairs xs)
 
 
+nextBubbleMove :: Bubble -> [Bubble] -> Maybe Bubble
+nextBubbleMove b bs = find (\b' -> isValidMove b' bs) (possibleMoves b)
 
+isValidMove :: Bubble -> [Bubble] -> Bool
+isValidMove b@(Bubble bid _ _ _) = foldl (\acc b'@(Bubble bid' _ _ _) -> if bid == bid' then acc && True else acc && (not (overlaps b b'))) True
+
+possibleMoves :: Bubble -> [Bubble]
+possibleMoves b@(Bubble id (Point x y) speed@(Point vx vy) radius) =
+                [ (Bubble id (Point (x+vx) (y+vy)) speed radius),
+                  (Bubble id (Point (x+vy) (y+vx)) speed radius),
+                  (Bubble id (Point (x-vy) (y-vx)) speed radius),
+                  b]
+                  
+                  
 writeLogFile :: [Bubble] -> IO ()
 writeLogFile bs = do
     handle <- openFile "D:\\_Rick's\\haskell\\DodgerSim\\log.txt" AppendMode
@@ -175,7 +172,29 @@ writeLogFile bs = do
     mapM_ (\b ->  do hPutStr handle (show b ++ "\n")) bs
     hClose handle
     return ()
+ 
+intToString :: Int -> String
+intToString 0 = "0"
+intToString n = intToString(n `quot` 10) ++ [chr(48 + n `mod` 10)]
+ 
+bubblesListToString :: [[Bubble]] -> String
+bubblesListToString lbs = "[" ++ (foldl (\acc bs -> acc ++ bubblesToString bs ++ ",") "" lbs ) ++ "]"
+
+bubblesToString :: [Bubble] -> String
+bubblesToString bs = "[" ++ (foldl (\acc b -> acc ++ bubbleToString b ++ ",") "" bs) ++ "]"
+ 
+bubbleToString :: Bubble -> String 
+bubbleToString (Bubble bid (Point x y) speed@(Point vx vy) radius) = "bid = " ++ intToString bid
+ 
+instance Show Bubble where  
+    show (Bubble bid (Point x y) speed@(Point vx vy) radius) = "bid = " ++ (intToString bid) ++ "\n"
     
+  
+findReplace :: (Eq a) => (a -> Bool) -> a -> [a] -> [a]
+findReplace _ _ [] = []
+findReplace f x' (x:xs) = (if f x then x' else x):(findReplace f x' xs)
 
+isThree :: Int -> Bool
+isThree n = n == 3
 
-                     
+  
