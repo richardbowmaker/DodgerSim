@@ -15,9 +15,26 @@ data Bubble = Bubble {  bid         :: Int,
                         position    :: Point,
                         speed       :: Point,
                         radius      :: Int
-                     } deriving (Eq)
+                     } deriving (Eq, Show)
 
-   
+ 
+b1 = (Bubble 1 (Point 0 200) (Point 10 0) 10)                     
+b2 = (Bubble 2 (Point 200 0) (Point 0 10) 10)  
+b3 = (Bubble 3 (Point 300 0) (Point 0 10) 10)  
+bs = [b1,b2]                   
+                   
+    
+bs2 =  [(Bubble 4 (Point 20 300) (Point 10 0) 11),
+        (Bubble 5 (Point 40 360) (Point 20 0) 16),
+        (Bubble 6 (Point 81 327) (Point 9 0) 10),
+        (Bubble 7 (Point 328 392) (Point 0 14) 13),
+        (Bubble 8 (Point 58 300) (Point 1 0) 17),
+        (Bubble 9 (Point 1470 330) (Point 15 0) 16),
+        (Bubble 10 (Point 565 300) (Point 5 0) 12),
+        (Bubble 11 (Point 300 342) (Point 0 3) 13),
+        (Bubble 12 (Point 720 300) (Point 6 0) 14),
+        (Bubble 13 (Point 2268 300) (Point 18 0) 13)]
+ 
 main = start mainGUI
 
 mainGUI :: IO ()
@@ -70,27 +87,27 @@ generateMoves _ = restOfMoves [] 0 (mkStdGen 500)
 restOfMoves :: [[Bubble]] -> Int -> StdGen -> [[Bubble]]
 restOfMoves xs nid gen = [moves] ++ (restOfMoves [moves] nid gen')
 
-            where   currentMoves = case xs of
+            where   currentBubbles = case xs of
                         [] -> []
                         xs -> last xs
                     
                     -- update all bubble postitions and discard any that have moved outside
                     -- the display area 
-                    updatedMoves = filter inDisplay (findValidMoves (allMoves currentMoves))
+                    updatedBubbles = filter inDisplay (updateBubbles currentBubbles)
                     
                     -- is the bubble still in the display area
                     inDisplay :: Bubble -> Bool
                     inDisplay (Bubble _ (Point x y) _ _) = (x < maxX) && (y < maxY)
                     
                     -- generate new bubble
-                    (gen', nid, mb) = genRandBubble gen nid (length updatedMoves)
+                    (gen', nid, mb) = genRandBubble gen nid (length updatedBubbles)
                     
                     -- add to list of bubbles provided it does not overlap
                     moves = case mb of
-                        Nothing -> updatedMoves
-                        Just b  -> case bubbleOverlaps b updatedMoves of
-                                True -> updatedMoves
-                                False -> b:updatedMoves
+                        Nothing -> updatedBubbles
+                        Just b  -> case bubbleOverlapsOthers b updatedBubbles of
+                                True -> updatedBubbles
+                                False -> b:updatedBubbles
                                                                       
 -- generate a random doger (10%) or nothing (90%)
 genRandBubble :: StdGen -> Int -> Int -> (StdGen, Int, Maybe Bubble)    
@@ -111,60 +128,45 @@ genRandBubble gen nid size = if new == 1 && size < 10
                         (speed, gen5)   = randomR (1,20)   gen4 :: (Int, StdGen)
 
                                                               
--- takes the list of bubbles and returns a list of lists representing the candidate set
--- of every combination of possible bubble moves. 
--- One of those will be chosen to be the next set of actual moves, i.e. no two bubbles overlap
--- i.e each bubble can move in each its preferred direction x or y, at right angles to that or not at all
-allMoves :: [Bubble] -> [[Bubble]]
-allMoves [] = [[]]
-allMoves (d@(Bubble id (Point x y) speed@(Point vx vy) radius):ds) 
-    = (:) <$> [ (Bubble id (Point (x+vx) (y+vy)) speed radius),
---                (Bubble id (Point (x+vy) (y+vx)) speed radius),
---                (Bubble id (Point (x-vy) (y-vx)) speed radius),
-                d]
-          <*> allMoves ds
+     
+                  
 
--- search the list of all possible bubble moves to find the first one where no two
--- bubbles overlap         
-findValidMoves :: [[Bubble]] -> [Bubble]
-findValidMoves ds = case find noOverlaps ds of
-                        Just ds' -> ds'
-                        Nothing  -> last ds
+-- selects each bubble in turn and calculates its next move
+updateBubbles :: [Bubble] -> [Bubble]
+updateBubbles bs = map (\b -> updateBubble b bs) bs
+
+-- updates a bubble, updated bubble must not overlap other bubbles
+updateBubble :: Bubble -> [Bubble] -> Bubble
+updateBubble b bs = case validMove of
+                        Just b' -> b'
+                        Nothing -> b  -- no valid move possible
+    where validMove = find (\b' -> not (bubbleOverlapsOthers b' others)) (possibleMoves b) 
+          others = filter (not . isSameBubble b) bs
   
--- checks that a list of bubbles has no overlaps  
-noOverlaps :: [Bubble] -> Bool
-noOverlaps ds = foldl (\result (d1,d2) -> result && not (overlaps d1 d2)) True (allPossiblePairs ds)
-
-
-bubbleOverlaps :: Bubble -> [Bubble] -> Bool
-bubbleOverlaps b = foldl (\acc b' -> acc || (overlaps b b')) False
-   
--- checks if two bubbles overlap   
-overlaps :: Bubble -> Bubble -> Bool
-overlaps (Bubble _ (Point x1 y1) _ r1) (Bubble _ (Point x2 y2) _ r2) = 
-    (x2+r2) > (x1-r1) && (x1+r1) > (x2-r2) && (y2+r2) > (y1-r1) && (y1+r1) > (y2-r2)
-
--- takes a list of bubbles and returns all possible pairings, i.e. 2Cn, so that
--- the list of bubbles can be checked for no overlaps between any of the bubbles
-allPossiblePairs :: [Bubble] -> [(Bubble,Bubble)]
-allPossiblePairs [] = []
-allPossiblePairs (x:xs) = [(x,b) | b <- xs] ++ (allPossiblePairs xs)
-
-
-nextBubbleMove :: Bubble -> [Bubble] -> Maybe Bubble
-nextBubbleMove b bs = find (\b' -> isValidMove b' bs) (possibleMoves b)
-
-isValidMove :: Bubble -> [Bubble] -> Bool
-isValidMove b@(Bubble bid _ _ _) = foldl (\acc b'@(Bubble bid' _ _ _) -> if bid == bid' then acc && True else acc && (not (overlaps b b'))) True
-
+-- returns a list of candidate moves that a bubble can make in priority order 
 possibleMoves :: Bubble -> [Bubble]
 possibleMoves b@(Bubble id (Point x y) speed@(Point vx vy) radius) =
                 [ (Bubble id (Point (x+vx) (y+vy)) speed radius),
                   (Bubble id (Point (x+vy) (y+vx)) speed radius),
-                  (Bubble id (Point (x-vy) (y-vx)) speed radius),
-                  b]
+                  (Bubble id (Point (x-vy) (y-vx)) speed radius) ]
                   
-                  
+-- returns true of bubbles have the same id    
+isSameBubble :: Bubble -> Bubble -> Bool
+isSameBubble (Bubble bid1 _ _ _) (Bubble bid2 _ _ _) = bid1 == bid2
+   
+-- checks if bubble overlaps any in a list of bubbles
+bubbleOverlapsOthers :: Bubble -> [Bubble] -> Bool
+bubbleOverlapsOthers b = foldl (\acc b' -> acc || (bubblesOverlap b b')) False
+   
+-- checks if two bubbles overlap   
+bubblesOverlap :: Bubble -> Bubble -> Bool
+bubblesOverlap (Bubble _ (Point x1 y1) _ r1) (Bubble _ (Point x2 y2) _ r2) = 
+    (x2+r2) > (x1-r1) && (x1+r1) > (x2-r2) && (y2+r2) > (y1-r1) && (y1+r1) > (y2-r2)
+   
+
+-----------------------------------------------  
+-----------------------------------------------  
+    
 writeLogFile :: [Bubble] -> IO ()
 writeLogFile bs = do
     handle <- openFile "D:\\_Rick's\\haskell\\DodgerSim\\log.txt" AppendMode
@@ -186,15 +188,7 @@ bubblesToString bs = "[" ++ (foldl (\acc b -> acc ++ bubbleToString b ++ ",") ""
 bubbleToString :: Bubble -> String 
 bubbleToString (Bubble bid (Point x y) speed@(Point vx vy) radius) = "bid = " ++ intToString bid
  
-instance Show Bubble where  
-    show (Bubble bid (Point x y) speed@(Point vx vy) radius) = "bid = " ++ (intToString bid) ++ "\n"
-    
-  
-findReplace :: (Eq a) => (a -> Bool) -> a -> [a] -> [a]
-findReplace _ _ [] = []
-findReplace f x' (x:xs) = (if f x then x' else x):(findReplace f x' xs)
-
-isThree :: Int -> Bool
-isThree n = n == 3
-
+--instance Show Bubble where  
+--    show (Bubble bid (Point x y) speed@(Point vx vy) radius) = "bid = " ++ (intToString bid) ++ "\n"
+                           
   
