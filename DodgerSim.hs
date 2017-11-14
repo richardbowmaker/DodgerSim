@@ -76,7 +76,7 @@ mainGUI = do
             return ()
         
 generateMoves :: [[Bubble]] -> [[Bubble]]
-generateMoves _ = restOfMoves [] 150 (mkStdGen 0)
+generateMoves _ = restOfMoves [] 200 (mkStdGen 0)
 --generateMoves _ = [bs2] ++ restOfMoves [bs2] 0 (mkStdGen 200)
      
 -- generates an list of lists comprising all the bubbles and their moves as an infinite list.
@@ -112,7 +112,7 @@ restOfMoves xs nid gen = [moves] ++ (restOfMoves [moves] nid' gen')
                     -- generate a random doger (10%) or nothing (90%)
                     genRandBubble :: StdGen -> Int -> Int -> (StdGen, Int, Maybe Bubble)    
                     genRandBubble gen nid size = 
-                        if new == 1 && size < 10
+                        if new == 1 && size < 20
                         then
                             if isX
                             then
@@ -124,7 +124,7 @@ restOfMoves xs nid gen = [moves] ++ (restOfMoves [moves] nid' gen')
                         where
                             (new, gen1)     = randomR (1,10)   gen  :: (Int, StdGen)
                             (isX, gen2)     = random           gen1 :: (Bool, StdGen)
-                            (start, gen3)   = randomR (1,maxX) gen2 :: (Int, StdGen)
+                            (start, gen3)   = randomR (250, 350) gen2 :: (Int, StdGen)
                             (speed, gen4)   = randomR (1,20)   gen3 :: (Int, StdGen)
                             (radius, gen5)  = randomR (10,20)  gen4 :: (Int, StdGen)
                             bid = nid + 1
