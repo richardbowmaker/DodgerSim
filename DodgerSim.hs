@@ -17,31 +17,14 @@ data Bubble = Bubble {  bid         :: Int,
                         radius      :: Int
                      } deriving (Eq, Show)
 
- 
-b1 = (Bubble 1 (Point 0 200) (Point 10 0) 10)                     
-b2 = (Bubble 2 (Point 200 0) (Point 0 10) 10)  
-b3 = (Bubble 3 (Point 300 0) (Point 0 10) 10)  
-bs = [b1,b2]                   
-                   
-    
-bs2 =  [(Bubble 4 (Point 20 300) (Point 10 0) 11),
-        (Bubble 5 (Point 40 360) (Point 20 0) 16),
-        (Bubble 6 (Point 81 327) (Point 9 0) 10),
-        (Bubble 7 (Point 328 392) (Point 0 14) 13),
-        (Bubble 8 (Point 58 300) (Point 1 0) 17),
-        (Bubble 9 (Point 1470 330) (Point 15 0) 16),
-        (Bubble 10 (Point 565 300) (Point 5 0) 12),
-        (Bubble 11 (Point 300 342) (Point 0 3) 13),
-        (Bubble 12 (Point 720 300) (Point 6 0) 14),
-        (Bubble 13 (Point 2268 300) (Point 18 0) 13)]
- 
+
 main = start mainGUI
 
 mainGUI :: IO ()
 mainGUI = do 
 
     bubbles <- varCreate []
-    varUpdate bubbles generateMoves
+    varUpdate bubbles createBubbles
    
     f <- frameFixed [] 
     
@@ -52,21 +35,16 @@ mainGUI = do
           ]
       
     -- create a timer that updates the display
-    t <- timer f [interval := 100, on command := updateDisplay bubbles f]
+    t <- timer f [interval := 50, on command := updateDisplay bubbles f]
 
-    --bs <- varGet bubbles
-    -- mapM_ writeLogFile (take 10 bs)
-    
-    --putStr (bubblesListToString (take 10 bs))
- 
     return () 
     
     where
     
         doPaint :: Var [[Bubble]] -> DC a -> Rect -> IO ()
         doPaint ds dc _ = do
-            moves <- varGet ds
-            mapM_ (\(Bubble _ position _ radius) -> do (circle dc position radius [])) (head moves)
+            bubbles <- varGet ds
+            mapM_ (\(Bubble _ position _ radius) -> do (circle dc position radius [])) (head bubbles)
             return ()
             
         updateDisplay :: Var [[Bubble]] -> Frame () -> IO ()
@@ -75,60 +53,48 @@ mainGUI = do
             repaint f
             return ()
         
-generateMoves :: [[Bubble]] -> [[Bubble]]
-generateMoves _ = restOfMoves [] 200 (mkStdGen 0)
---generateMoves _ = [bs2] ++ restOfMoves [bs2] 0 (mkStdGen 200)
-     
+createBubbles :: [[Bubble]] -> [[Bubble]]
+createBubbles _ = moveBubbles [] 200 (mkStdGen 0)
+    
 -- generates an list of lists comprising all the bubbles and their moves as an infinite list.
 -- the outer list is a time array, t0, t1, t2 etc with each element being a list of bubbles and there current position at
 -- time tn. 
 -- The bubbles are are added to the timeline randomly and will move either vertically or horizontally
+moveBubbles :: [[Bubble]] -> Int -> StdGen -> [[Bubble]]
+moveBubbles bs nid gen = [bubbles] ++ (moveBubbles [bubbles] nid' gen')
 
-restOfMoves :: [[Bubble]] -> Int -> StdGen -> [[Bubble]]
-restOfMoves xs nid gen = [moves] ++ (restOfMoves [moves] nid' gen')
-
-            where   currentBubbles = case xs of
-                        [] -> []
-                        xs -> last xs
-                    
-                    -- update all bubble postitions and discard any that have moved outside
-                    -- the display area 
-                    updatedBubbles = filter inDisplay (updateBubbles currentBubbles)
-                    
-                    -- is the bubble still in the display area
-                    inDisplay :: Bubble -> Bool
-                    inDisplay (Bubble _ (Point x y) _ _) = (x < maxX) && (y < maxY)
-                                                       
-                    -- generate new bubble
-                    (gen', nid', mb) = genRandBubble gen nid (length updatedBubbles)
-                    
-                    -- add to list of bubbles provided it does not overlap
-                    moves = case mb of
-                        Nothing -> updatedBubbles
-                        Just b  -> case bubbleOverlapsOthers b updatedBubbles of
-                                    True -> updatedBubbles
-                                    False -> b:updatedBubbles
-                                                                                                                                
-                    -- generate a random doger (10%) or nothing (90%)
-                    genRandBubble :: StdGen -> Int -> Int -> (StdGen, Int, Maybe Bubble)    
-                    genRandBubble gen nid size = 
-                        if new == 1 && size < 20
-                        then
-                            if isX
-                            then
-                                (gen5, bid, Just (Bubble bid (Point 0 start) (Point speed 0) radius))
-                            else
-                                (gen5, bid, Just (Bubble bid (Point start 0) (Point 0 speed) radius))
-                        else
-                            (gen1, bid, Nothing)
-                        where
-                            (new, gen1)     = randomR (1,10)   gen  :: (Int, StdGen)
-                            (isX, gen2)     = random           gen1 :: (Bool, StdGen)
-                            (start, gen3)   = randomR (250, 350) gen2 :: (Int, StdGen)
-                            (speed, gen4)   = randomR (1,20)   gen3 :: (Int, StdGen)
-                            (radius, gen5)  = randomR (10,20)  gen4 :: (Int, StdGen)
-                            bid = nid + 1
-                                                   
+    where   currentBubbles = lastList bs
+          
+            -- update all bubble postitions and discard any that have moved outside
+            -- the display area 
+            updatedBubbles = filter inDisplay (updateBubbles currentBubbles)
+                                             
+            -- generate new random bubble
+            (gen', nid', mb) = genRandBubble gen nid
+            
+            -- add new bubble to list
+            bubbles = addBubble mb updatedBubbles
+                                                                                                                                           
+-- generate a random bubble (10%) or nothing (90%)
+genRandBubble :: StdGen -> Int -> (StdGen, Int, Maybe Bubble)    
+genRandBubble gen nid = 
+    if new == 1
+    then
+        if isX
+        then
+            (gen5, bid, Just (Bubble bid (Point 0 start) (Point speed 0) radius))
+        else
+            (gen5, bid, Just (Bubble bid (Point start 0) (Point 0 speed) radius))
+    else
+        (gen1, bid, Nothing)
+    where
+        (new, gen1)     = randomR (1,10)     gen  :: (Int, StdGen)
+        (isX, gen2)     = random             gen1 :: (Bool, StdGen)
+        (start, gen3)   = randomR (250, 350) gen2 :: (Int, StdGen)
+        (speed, gen4)   = randomR (1,10)     gen3 :: (Int, StdGen)
+        (radius, gen5)  = randomR (10,20)    gen4 :: (Int, StdGen)
+        bid = nid + 1
+                               
 -- selects each bubble in turn and calculates its next move
 updateBubbles :: [Bubble] -> [Bubble]
 updateBubbles bs = map (\b -> updateBubble b bs) bs
@@ -138,18 +104,18 @@ updateBubble :: Bubble -> [Bubble] -> Bubble
 updateBubble b bs = case validMove of
                         Just b' -> b'
                         Nothing -> b  -- no valid move possible
+                        
     where validMove = find (\b' -> not (bubbleOverlapsOthers b' others)) (possibleMoves b) 
           others = filter (not . isSameBubble b) bs
 
-  
 -- returns a list of candidate moves that a bubble can make in priority order 
 possibleMoves :: Bubble -> [Bubble]
 possibleMoves b@(Bubble id (Point x y) speed@(Point vx vy) radius) =
                 [ (Bubble id (Point (x+vx) (y+vy)) speed radius),
-                  (Bubble id (Point (x-vy) (y-vx)) speed radius),
-                  (Bubble id (Point (x+vy) (y+vx)) speed radius) ]
+                  (Bubble id (Point (x-vy) (y-vx)) speed radius) ]
+--                  (Bubble id (Point (x+vy) (y+vx)) speed radius) ]
                   
--- returns true of bubbles have the same id    
+-- returns true if bubbles have the same id    
 isSameBubble :: Bubble -> Bubble -> Bool
 isSameBubble (Bubble bid1 _ _ _) (Bubble bid2 _ _ _) = bid1 == bid2
    
@@ -162,32 +128,19 @@ bubblesOverlap :: Bubble -> Bubble -> Bool
 bubblesOverlap (Bubble _ (Point x1 y1) _ r1) (Bubble _ (Point x2 y2) _ r2) = 
     (x2+r2) > (x1-r1) && (x1+r1) > (x2-r2) && (y2+r2) > (y1-r1) && (y1+r1) > (y2-r2)
    
+-- returns last list of a list or [] if empty
+lastList :: [[a]] -> [a]
+lastList [] = []
+lastList xs = last xs
 
------------------------------------------------  
------------------------------------------------  
-    
-writeLogFile :: [Bubble] -> IO ()
-writeLogFile bs = do
-    handle <- openFile "D:\\_Rick's\\haskell\\DodgerSim\\log.txt" AppendMode
-    hPutStr handle "-----------------------------------------------------------\n"
-    mapM_ (\b ->  do hPutStr handle (show b ++ "\n")) bs
-    hClose handle
-    return ()
- 
-intToString :: Int -> String
-intToString 0 = "0"
-intToString n = intToString(n `quot` 10) ++ [chr(48 + n `mod` 10)]
- 
-bubblesListToString :: [[Bubble]] -> String
-bubblesListToString lbs = "[" ++ (foldl (\acc bs -> acc ++ bubblesToString bs ++ ",") "" lbs ) ++ "]"
+-- add a bubble in a Maybe to start of list, provided it does not overlap other bubbles in the list
+addBubble :: Maybe Bubble -> [Bubble] -> [Bubble]
+addBubble Nothing bs = bs
+addBubble (Just b) bs = if (length bs > 20) || (bubbleOverlapsOthers b others) then bs else b:bs
+    where others = filter (not . isSameBubble b) bs
 
-bubblesToString :: [Bubble] -> String
-bubblesToString bs = "[" ++ (foldl (\acc b -> acc ++ bubbleToString b ++ ",") "" bs) ++ "]"
- 
-bubbleToString :: Bubble -> String 
-bubbleToString (Bubble bid (Point x y) speed@(Point vx vy) radius) = "bid = " ++ intToString bid
- 
---instance Show Bubble where  
---    show (Bubble bid (Point x y) speed@(Point vx vy) radius) = "bid = " ++ (intToString bid) ++ "\n"
-                           
-  
+-- is the bubble still in the display area
+inDisplay :: Bubble -> Bool
+inDisplay (Bubble _ (Point x y) _ _) = (x < maxX) && (y < maxY)
+
+
