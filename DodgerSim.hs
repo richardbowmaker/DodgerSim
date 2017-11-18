@@ -97,16 +97,15 @@ genRandBubble gen nid =
                                
 -- selects each bubble in turn and calculates its next move
 updateBubbles :: [Bubble] -> [Bubble]
-updateBubbles bs = map (\b -> updateBubble b bs) bs
+updateBubbles bs = map (\b -> updateBubble b (filter (not . isSameBubble b) bs)) bs
 
 -- updates a bubble, updated bubble must not overlap other bubbles
 updateBubble :: Bubble -> [Bubble] -> Bubble
 updateBubble b bs = case validMove of
                         Just b' -> b'
-                        Nothing -> b  -- no valid move possible
+                        Nothing -> b  -- no valid move possible, stay put
                         
-    where validMove = find (\b' -> not (bubbleOverlapsOthers b' others)) (possibleMoves b) 
-          others = filter (not . isSameBubble b) bs
+    where validMove = find (\b' -> not (bubbleOverlapsOthers b' bs)) (possibleMoves b) 
 
 -- returns a list of candidate moves that a bubble can make in priority order 
 possibleMoves :: Bubble -> [Bubble]
