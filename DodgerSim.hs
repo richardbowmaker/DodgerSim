@@ -101,19 +101,12 @@ updateBubbles bs = map (\b -> updateBubble b (filter (not . isSameBubble b) bs))
 
 -- updates a bubble, updated bubble must not overlap other bubbles
 updateBubble :: Bubble -> [Bubble] -> Bubble
-updateBubble b bs = case validMove of
-                        Just b' -> b'
-                        Nothing -> b  -- no valid move possible, stay put
-                        
-    where validMove = find (\b' -> not (bubbleOverlapsOthers b' bs)) (possibleMoves b) 
-
--- returns a list of candidate moves that a bubble can make in priority order 
-possibleMoves :: Bubble -> [Bubble]
-possibleMoves b@(Bubble id (Point x y) speed@(Point vx vy) radius) =
-                [ (Bubble id (Point (x+vx) (y+vy)) speed radius),
-                  (Bubble id (Point (x-vy) (y-vx)) speed radius) ]
---                  (Bubble id (Point (x+vy) (y+vx)) speed radius) ]
-                  
+updateBubble b bs = case mb of
+                Nothing -> b
+                Just b' -> b'
+    where mb = find (\b' ->  not (bubbleOverlapsOthers b' others)) (candidateMovesOrdered b bs)
+          others = filter (not . isSameBubble b) bs
+             
 -- returns true if bubbles have the same id    
 isSameBubble :: Bubble -> Bubble -> Bool
 isSameBubble (Bubble bid1 _ _ _) (Bubble bid2 _ _ _) = bid1 == bid2
@@ -122,10 +115,10 @@ isSameBubble (Bubble bid1 _ _ _) (Bubble bid2 _ _ _) = bid1 == bid2
 bubbleOverlapsOthers :: Bubble -> [Bubble] -> Bool
 bubbleOverlapsOthers b = foldl (\acc b' -> acc || (bubblesOverlap b b')) False
    
--- checks if two bubbles overlap   
+-- checks if two bubbles overlap  (i.e. square bubbles) 
 bubblesOverlap :: Bubble -> Bubble -> Bool
 bubblesOverlap (Bubble _ (Point x1 y1) _ r1) (Bubble _ (Point x2 y2) _ r2) = 
-    (x2+r2) > (x1-r1) && (x1+r1) > (x2-r2) && (y2+r2) > (y1-r1) && (y1+r1) > (y2-r2)
+    regionsOverlap (Point (x1-r1) (y1-r1)) (Point (x1+r1) (y1+r1)) (Point (x2-r2) (y2-r2)) (Point (x2+r2) (y2+r2))
    
 -- returns last list of a list or [] if empty
 lastList :: [[a]] -> [a]
@@ -142,4 +135,41 @@ addBubble (Just b) bs = if (length bs > 20) || (bubbleOverlapsOthers b others) t
 inDisplay :: Bubble -> Bool
 inDisplay (Bubble _ (Point x y) _ _) = (x < maxX) && (y < maxY)
 
+distanceBubbles :: Bubble -> Bubble -> Int
+distanceBubbles (Bubble _ (Point x1 y1) _ r1) (Bubble _ (Point x2 y2) _ r2) =
+    round $ sqrt(fromIntegral((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))) - fromIntegral (r1 + r2)
+ 
+distanceFromBubbles :: Bubble -> [Bubble] -> Int
+distanceFromBubbles b bs = foldl (\acc b' -> acc + (distanceBubbles b b')) 0 bs
 
+-- returns a list of bubbles that interset a region            
+findBubblesInRegion :: [Bubble] -> Point -> Point -> [Bubble]
+findBubblesInRegion bs p1 p2 =
+    foldl (\acc b@(Bubble _ (Point xb yb) _ rb) -> if (regionsOverlap p1 p2 (Point (xb-rb) (xb+rb)) (Point (yb-rb) (yb+rb))) then b:acc else acc) [] bs
+            
+regionsOverlap :: Point -> Point -> Point -> Point -> Bool
+regionsOverlap (Point x11 y11) (Point x12 y12) (Point x21 y21) (Point x22 y22) =     
+    x22 >= x11 && x12 >= x21 && y22 >= y11 && y12 >= y21
+    
+
+candidateMoves :: Bubble -> [Bubble]
+candidateMoves (Bubble bid (Point x y) (Point vx vy) r) = 
+    if vx > 0 
+    then
+        map (\(Point dx dy) -> (Bubble bid (Point (x+dx) (y+dy)) (Point vx vy) r)) [(Point d 0), (Point 0 (-d)), (Point 0 d), (Point d (-d)), (Point d d)]
+    else
+        map (\(Point dx dy) -> (Bubble bid (Point (x+dx) (y+dy)) (Point vx vy) r)) [(Point 0 d), (Point (-d) 0), (Point d 0), (Point (-d) d), (Point d d)]
+    where d = vx+vy
+ 
+-- Bubble to find near by bubbles for -> all bubbles -> near by bubbles
+nearByBubbles :: Bubble -> [Bubble] -> [Bubble]
+nearByBubbles (Bubble _ (Point x y) (Point vx vy) r) bs
+    = findBubblesInRegion bs (Point (x-d) (y-d)) (Point (x+d) (y+d))
+        where d = vx + vy + r
+               
+candidateMovesOrdered :: Bubble -> [Bubble] -> [Bubble]
+candidateMovesOrdered b bs = 
+    sortBy (\b1 b2 -> (compare (distanceFromBubbles b2 nearBy) (distanceFromBubbles b1 nearBy))) (candidateMoves b)
+        where nearBy = nearByBubbles b (filter (not . isSameBubble b) bs)
+    
+      
