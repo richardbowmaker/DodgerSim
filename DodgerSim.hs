@@ -1,5 +1,6 @@
 module Main where
 import Graphics.UI.WX
+import Graphics.UI.WXCore
 import System.Random
 import Data.List
 import Debug.Trace
@@ -31,11 +32,12 @@ mainGUI = do
     set f [ text := "Bubble Sim", 
             bgcolor := white, 
             layout := space maxX maxY,
-            on paint := doPaint bubbles
+            on paint := doPaint bubbles,
+            on click := onClickLeft f
           ]
       
     -- create a timer that updates the display
-    t <- timer f [interval := 50, on command := updateDisplay bubbles f]
+    --t <- timer f [interval := 50, on command := updateDisplay bubbles f]
 
     return () 
     
@@ -52,9 +54,22 @@ mainGUI = do
             varUpdate ds (drop 1) 
             repaint f
             return ()
+            
+        onClickLeft :: Frame () -> Point -> IO ()
+        onClickLeft f p = do 
+            withClientDC f (\dc -> onClickLeftPaint dc p)
+            return ()
+            
+        onClickLeftPaint :: DC a -> Point -> IO ()
+        onClickLeftPaint dc p = do 
+            circle dc p 20 []
+            return ()
+        
+        
+        
         
 createBubbles :: [[Bubble]] -> [[Bubble]]
-createBubbles _ = moveBubbles [] 200 (mkStdGen 0)
+createBubbles _ = moveBubbles [] 100 (mkStdGen 0)
     
 -- generates an list of lists comprising all the bubbles and their moves as an infinite list.
 -- the outer list is a time array, t0, t1, t2 etc with each element being a list of bubbles and there current position at
@@ -169,7 +184,10 @@ nearByBubbles (Bubble _ (Point x y) (Point vx vy) r) bs
                
 candidateMovesOrdered :: Bubble -> [Bubble] -> [Bubble]
 candidateMovesOrdered b bs = 
-    sortBy (\b1 b2 -> (compare (distanceFromBubbles b2 nearBy) (distanceFromBubbles b1 nearBy))) (candidateMoves b)
-        where nearBy = nearByBubbles b (filter (not . isSameBubble b) bs)
+    case nearBy of
+        [] ->  possibleMoves
+        otherwise -> sortBy (\b1 b2 -> (compare (distanceFromBubbles b2 nearBy) (distanceFromBubbles b1 nearBy))) possibleMoves
+        where   nearBy = nearByBubbles b (filter (not . isSameBubble b) bs)
+                possibleMoves = candidateMoves b
     
       
