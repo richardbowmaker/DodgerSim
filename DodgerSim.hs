@@ -21,19 +21,25 @@ data Bubble = Bubble {  bid         :: Int,
 
 main = start mainGUI
 
+data Drag = Drag { downAt :: Point, at :: Point }
+
 mainGUI :: IO ()
 mainGUI = do 
 
     bubbles <- varCreate []
     varUpdate bubbles createBubbles
+    
+    mouseDrag <- varCreate (Drag (Point 0 0) (Point 0 0))
    
     f <- frameFixed [] 
     
     set f [ text := "Bubble Sim", 
-            bgcolor := white, 
-            layout := space maxX maxY,
-            on paint := doPaint bubbles,
-            on click := onClickLeft f
+            bgcolor     := white, 
+            layout      := space maxX maxY,
+            on paint    := doPaint bubbles,
+            on click    := onMouseLeftDown f mouseDrag,
+            on unclick  := onMouseLeftUp f mouseDrag,
+            on drag     := onMouseDrag f mouseDrag
           ]
       
     -- create a timer that updates the display
@@ -55,17 +61,40 @@ mainGUI = do
             repaint f
             return ()
             
-        onClickLeft :: Frame () -> Point -> IO ()
-        onClickLeft f p = do 
-            withClientDC f (\dc -> onClickLeftPaint dc p)
+        onMouseLeftDown :: Frame () -> Var Drag -> Point -> IO ()
+        onMouseLeftDown f d p = do 
+            varSet d (Drag p (Point 0 0))
             return ()
-            
+
+        onMouseLeftUp :: Frame () -> Var Drag -> Point -> IO ()
+        onMouseLeftUp f d p = do
+            (Drag p1 p2) <- varGet d
+            withClientDC f (\dc -> drawBand dc p1 p2) -- undraw
+            varSet d (Drag (Point 0 0) (Point 0 0))
+            return ()
+             
+        onMouseDrag :: Frame () -> Var Drag -> Point -> IO ()
+        onMouseDrag f d p = do 
+            (Drag p1 p2) <- varGet d
+            varSet d (Drag p1 p)
+            withClientDC f (\dc -> drawBand dc p1 p2) -- undraw old
+            withClientDC f (\dc -> drawBand dc p1 p) -- draw new
+            return ()
+             
         onClickLeftPaint :: DC a -> Point -> IO ()
         onClickLeftPaint dc p = do 
             circle dc p 20 []
             return ()
-        
-        
+
+        drawBand :: DC a -> Point -> Point -> IO ()
+        drawBand _ (Point 0 0) _ = return ()
+        drawBand _ _ (Point 0 0) = return ()
+        drawBand dc p1 p2 = do 
+            dcSetPenStyle dc (PenStyle (PenDash DashShort) black 1 CapRound JoinRound)
+            drawRect dc (rectBetween p1 p2) []
+            return ()
+  
+ 
         
         
 createBubbles :: [[Bubble]] -> [[Bubble]]
