@@ -43,7 +43,7 @@ mainGUI = do
           ]
       
     -- create a timer that updates the display
-    --t <- timer f [interval := 50, on command := updateDisplay bubbles f]
+    t <- timer f [interval := 50, on command := updateDisplay bubbles f]
 
     return () 
     
@@ -90,8 +90,8 @@ mainGUI = do
         drawBand _ (Point 0 0) _ = return ()
         drawBand _ _ (Point 0 0) = return ()
         drawBand dc p1 p2 = do 
-            dcSetPenStyle dc (PenStyle (PenDash DashShort) black 1 CapRound JoinRound)
-            drawRect dc (rectBetween p1 p2) []
+            dcSetLogicalFunction dc wxINVERT
+            drawRect dc (rectBetween p1 p2) [penWidth := 1]
             return ()
   
  
